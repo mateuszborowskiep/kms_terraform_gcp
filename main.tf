@@ -1,19 +1,3 @@
-# Define the provider and required variables
-provider "google" {
-  project = "rosy-crawler-389806"
-  region  = "europe-west1"
-}
-
-variable "key_ring_name" {
-  description = "Name of the key ring"
-  default     = "key-ring"
-}
-
-variable "crypto_key_name" {
-  description = "Name of the crypto key"
-  default     = "crypto-key"
-}
-
 # Enable the Cloud KMS API
 resource "google_project_service" "cloud_kms" {
   service = "cloudkms.googleapis.com"
@@ -35,4 +19,24 @@ resource "google_kms_crypto_key" "my_crypto_key" {
     algorithm       = "GOOGLE_SYMMETRIC_ENCRYPTION"
     protection_level = "SOFTWARE"
   }
+}
+
+## Bucket for realize encryption
+resource "google_storage_bucket" "encrypted-store" {
+  name     = "encrypted-store-bucket"
+  location = "EU"
+  encryption {
+    default_kms_key_name = var.crypto_key_name
+  }
+  depends_on = [
+    google_kms_crypto_key.my_crypto_key
+  ]
+}
+
+## ACL for bucket
+resource "google_storage_default_object_acl" "encrypted-store-default-acl" {
+  bucket = google_storage_bucket.encrypted-store.name
+  role_entity = [
+    "OWNER:admin@cloudsecurity.team",
+  ]
 }
